@@ -29,7 +29,7 @@ public class CreateTransfer {
     //Constructor
     public CreateTransfer(Connection con, Transaction transaction) throws SQLException {
         this.transaction = transaction;
-        this.lineItems = this.transaction.getLineItems();
+        this.lineItems = this.transaction.getLineItemsUpdated();
         this.transNumber = this.transaction.getTransactionNumber();
         this.storeId = this.transaction.getStoreId();
         this.con = con;

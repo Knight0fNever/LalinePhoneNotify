@@ -48,7 +48,7 @@ public class Email {
     }
 
     //Sends email containing SQL query results
-    public void eSend(List<Integer> itemLinesToDrop, List<Integer> itemLinesTook) throws SQLException {
+    public void eSend() throws SQLException {
 
         String subject = "Order " + transaction.getTransactionNumber() + " from " + store;
         //Builds HTML for the Customer Info cell in table

@@ -22,8 +22,25 @@ public class LineItem {
 
 
     LineItem(int transactionNumber, int storeId) {
+        super();
         this.transactionNumber = transactionNumber;
         this.storeId = storeId;
+    }
+
+    LineItem(LineItem lineItem) {
+        this.ilc = lineItem.getIlc();
+        this.itemId = lineItem.getItemId();
+        this.description = lineItem.getDescription();
+        this.storeId = lineItem.getStoreId();
+        this.rep = lineItem.getRep();
+        this.price = lineItem.getPrice();
+        this.cost = lineItem.getCost();
+        this.qty = lineItem.getQty();
+        this.whQty = lineItem.getWhQty();
+        this.salesTax = lineItem.getSalesTax();
+        this.comment = lineItem.getComment();
+        this.transactionEntryId = lineItem.getTransactionEntryId();
+        this.transactionNumber = lineItem.getTransactionNumber();
     }
 
     public String getIlc() {
@@ -112,5 +129,13 @@ public class LineItem {
 
     public double getSalesTax() {
         return salesTax;
+    }
+
+    public int getStoreId() {
+        return storeId;
+    }
+
+    public int getTransactionNumber() {
+        return transactionNumber;
     }
 }
