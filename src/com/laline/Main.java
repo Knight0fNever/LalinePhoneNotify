@@ -11,24 +11,34 @@ public class Main {
         String testEmailTo = "joshc@lalineusa.com";
         String emailFrom = "info@lalineusa.com";
         String emailBcc = "";
-        SQL sql = new SQL("jdbc:sqlserver://LALINEHQ\\SQLEXPRESS;databaseName=Laline HQ", "sa", "Zcsf4119!");
+        String p = "jfjTre tihn5mmvuiiTptpo elakn3iisg Flenoi#pos";
+        //SQL sql = new SQL("jdbc:sqlserver://LALINEHQ\\SQLEXPRESS;databaseName=Laline HQ", "app", p.substring(11, 20));
+        SQL sql = new SQL("jdbc:sqlserver://JOSH-IT\\SQLEXPRESS;databaseName=Laline HQ", "sa", "Zcsf4119!");
         Connection con = sql.getCon();
         Filer  fl = new Filer(con);
 
 
 
+
         /*
         //Testing
-        TransactionDetails tdTest = new TransactionDetails(con, 45125, 4);
-        ShippingInfo siTest = new ShippingInfo(con, 4, 45125);
+        TransactionDetails tdTest = new TransactionDetails(con, 65428, 3);
+        ShippingInfo siTest = new ShippingInfo(con, 3, 65428);
         CheckInventory ciTest = new CheckInventory(con, tdTest);
-        CreateTransfer ctTest = new CreateTransfer(con, 45125, 4, tdTest);
+        CreateTransfer ctTest = new CreateTransfer(con, 65428, 3, tdTest);
         Email eTest = new Email(con, testEmailTo, emailFrom, emailBcc, tdTest.getStore(), emailUsername, emailPassword, siTest, tdTest, ctTest.getWorksheetId());
         eTest.eSend(ctTest.getItemLinesToDrop(), ctTest.getItemLinesTook());
         */
 
+        Transaction transTest = new Transaction(65428, 3, sql);
+        CreateTransfer ct = new CreateTransfer(con, transTest);
+        Email email = new Email(con, testEmailTo, emailFrom, emailBcc, transTest.getStoreId(), emailUsername, emailPassword, transTest, ct.getWorksheetId());
 
 
+
+
+
+        /*
         //Main loop for Pier
         if(fl.PierNewTrans()) {
             TransactionDetails td = new TransactionDetails(con, fl.getpNewTrans(), 2);
@@ -58,5 +68,6 @@ public class Main {
             Email e = new Email(con, emailTo + ",chestnut@lalineusa.com,eugenial@lalineusa.com", emailFrom, emailBcc, td.getStore(), emailUsername, emailPassword, si, td, ct.getWorksheetId());
             e.eSend(ct.getItemLinesToDrop(), ct.getItemLinesTook());
         }
+        */
     }
 }

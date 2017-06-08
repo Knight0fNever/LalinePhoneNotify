@@ -4,6 +4,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 import static com.laline.SQL.runQuery;
@@ -19,30 +20,28 @@ public class CreateTransfer {
     private Connection con;
     private String store;
     private String storeInfo;
-    private TransactionDetails td;
-    private List<Integer> itemLinesToDrop = new ArrayList<>();
-    private List<Integer> itemLinesTook = new ArrayList<>();
+    private Transaction transaction;
+    private List<LineItem> lineItems;
 
 
 
 
     //Constructor
-    public CreateTransfer(Connection con, int transNumber, int storeId, TransactionDetails td) throws SQLException {
-        this.transNumber = transNumber;
-        this.storeId = storeId;
+    public CreateTransfer(Connection con, Transaction transaction) throws SQLException {
+        this.transaction = transaction;
+        this.lineItems = this.transaction.getLineItems();
+        this.transNumber = this.transaction.getTransactionNumber();
+        this.storeId = this.transaction.getStoreId();
         this.con = con;
-        this.td = td;
         setStore();
         setPoTitle();
-        addItemsToDrop(td.getLineItems());
-        if(!(td.getLineItems().size() == this.itemLinesToDrop.size())) {
-            createWorksheet(con);
-            setWorksheetId(con);
-            setStoreInfo();
-            insertWorksheetStore(con);
-            insertWorksheetHeader(con);
-            insertWorksheetEntries(con);
-        }
+        dropItems();
+        createWorksheet(con);
+        setWorksheetId(con);
+        setStoreInfo();
+        insertWorksheetStore(con);
+        insertWorksheetHeader(con);
+        insertWorksheetEntries(con);
     }
 
     //Replaces StoreID with String of store name
@@ -156,31 +155,7 @@ public class CreateTransfer {
 
     //Inserts a row for each line item into the WorksheetEntries
     public void insertWorksheetEntries(Connection con) throws SQLException {
-        List<String[]> lineItems = td.getLineItems();
-        List<Integer> lineItemItemId = new ArrayList<>();
-        List<Double> lineItemCost = new ArrayList<>();
-        String itemQuery;
-        //Finds the ItemID based off of the ItemLookupCode
-        for(int i = 0; i < lineItems.size(); i++) {
-            itemQuery = "SELECT TOP 1 Item.ID FROM Item\n" +
-                    " WHERE Item.ItemLookupCode = '" + td.getLookupCode(i) + "'";
-            ResultSet rs = viewTable(con, itemQuery);
-            while(rs.next()) {
-                lineItemItemId.add(rs.getInt(1));
-            }
-        }
-        String itemCostQuery;
-        //Finds the Cost based off of the ItemLookupCode
-        for(int i = 0; i < lineItems.size(); i++) {
-            itemCostQuery = "SELECT TOP 1 Item.Cost FROM Item\n" +
-                    " WHERE Item.ItemLookupCode = '" + td.getLookupCode(i) + "'";
-            ResultSet rs = viewTable(con, itemCostQuery);
-            while(rs.next()) {
-                lineItemCost.add(rs.getDouble(1));
-            }
-        }
-        //Uses the CheckInventory class to find the line item rows that have insufficient stock in the WH
-        addItemsToDrop(lineItems);
+        List<LineItem> lineItemsMod = this.transaction.getLineItems();
 
         //Builds the query for inserting each line item row into the database
         StringBuilder query = new StringBuilder();
@@ -189,44 +164,34 @@ public class CreateTransfer {
                 "VALUES");
 
         for (int i = 0; i < lineItems.size(); i++) {
-            if(!itemLinesToDrop.contains(i) || !(itemLinesTook.contains(i))) {
-                query.append("(" + this.worksheetId + ", '" + td.getDescription(i) + "', " + (int) td.getQty(i) + ", " + lineItemItemId.get(i) + ", 0, '', " + lineItemCost.get(i) + ", 0, 0),\n");
-            }
+                query.append("(" + this.worksheetId + ", '" + lineItems.get(i).getDescription() + "', " +
+                        lineItems.get(i).getQty() + ", " + lineItems.get(i).getItemId() + ", 0, '', " + lineItems.get(i).getCost() + ", 0, 0),\n");
         }
         //Removes comma from the query if last entry
         if(query.charAt(query.length() - 2) == ',') {
             query.deleteCharAt(query.length() - 2);
         }
-        if(!lineItemItemId.isEmpty() || !(query.charAt(query.length()-1) == 'S')) {
+        if(!lineItems.isEmpty() || !(query.charAt(query.length()-1) == 'S')) {
             runQuery(con, query.toString());
             //System.out.println(query);
         }
     }
 
-    //Uses the CheckInventory class to find the line item rows that have insufficient stock in the WH
-    private void addItemsToDrop(List<String[]> lineItems) throws SQLException {
-        for (int i = 0; i < lineItems.size(); i++) {
-            CheckInventory ci = new CheckInventory(con, this.td);
-            int qty = ci.getWHQty()[i] - (int) this.td.getQty(i);
-            if (qty < 0) {
-                itemLinesToDrop.add(i);
+    private void dropItems() {
+        Iterator<LineItem> iterator = lineItems.iterator();
+        while(iterator.hasNext()) {
+            LineItem lineItem = iterator.next();
+            if (lineItem.getWhQty() < lineItem.getQty()) {
+                iterator.remove();
             }
-            if(td.getComment(i).toLowerCase().matches("cc(.*)")) {
-                itemLinesTook.add(i);
+            else if(lineItem.getComment().toLowerCase().matches("cc(.*)")) {
+                iterator.remove();
             }
         }
     }
 
 
     //Getters
-    public List<Integer> getItemLinesToDrop() {
-        return this.itemLinesToDrop;
-    }
-
-    public List<Integer> getItemLinesTook() {
-        return this.itemLinesTook;
-    }
-
     public int getWorksheetId() {
         return this.worksheetId;
     }

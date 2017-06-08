@@ -4,6 +4,7 @@ import javax.mail.*;
 import javax.mail.internet.*;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Properties;
 
@@ -15,15 +16,14 @@ public class Email {
     private String username;
     private String password;
     private String from;
-    private ShippingInfo si;
-    private TransactionDetails td;
-    private List<String[]> lineItems;
+    private Transaction transaction;
+    private List<LineItem> lineItems;
     private Connection con;
     private int worksheetId;
 
 
 
-    public Email(Connection con,String t, String f, String bcc, int store, String u, String p, ShippingInfo si, TransactionDetails td, int worksheetId){
+    public Email(Connection con,String t, String f, String bcc, int store, String u, String p, Transaction transaction, int worksheetId){
         this.to = t;
         this.from = f;
         this.bcc = bcc;
@@ -41,9 +41,8 @@ public class Email {
         }
         this.username = u;
         this.password = p;
-        this.si = si;
-        this.td = td;
-        this.lineItems = td.getLineItems();
+        this.transaction = transaction;
+        this.lineItems = transaction.getLineItems();
         this.con = con;
         this.worksheetId = worksheetId;
     }
@@ -51,49 +50,42 @@ public class Email {
     //Sends email containing SQL query results
     public void eSend(List<Integer> itemLinesToDrop, List<Integer> itemLinesTook) throws SQLException {
 
-        String subject = "Order " + td.getTransNumber() + " from " + store;
+        String subject = "Order " + transaction.getTransactionNumber() + " from " + store;
         //Builds HTML for the Customer Info cell in table
         StringBuilder html = new StringBuilder();
         String text = "";
         html.append("<table width=\"100%\" border=\"1\" align=\"center\">\n" +
                 "<tr>\n" +
-                "<td align=\"left\">" + si.getName() + "<br> \n");
+                "<td align=\"left\">" + transaction.getCustomerName() + "<br> \n");
 
         //Only adds Company if it is present
-        if(si.getCompany() != null) {
-            if(!(si.getCompany().equals(""))) {
-                html.append(si.getCompany() + "<br>\n");
+        if(transaction.getCustomerCompany() != null) {
+            if(!(transaction.getCustomerCompany().equals(""))) {
+                html.append(transaction.getCustomerCompany() + "<br>\n");
             }
         }
 
-        html.append(si.getAddress() + "<br>\n");
+        html.append(transaction.getCustomerAddress() + "<br>\n");
 
-        //Only adds Address2 if it is present
-        if(si.getAddress2() != null) {
-            if (!si.getAddress2().equals("")) {
-                html.append(si.getAddress2() + "<br>\n");
-            }
-        }
-
-        html.append(si.getCity() + ", " + si.getState() + " " + si.getZip() + " " + si.getCountry() + "</td>\n" +
-                "<td><b>Phone Number:</b> " + si.getPhone()  + "<br>\n" +
-                "<b>Email Address:</b> " + si.getEmail() + "</td>" +
+        html.append("</td>\n" +
+                "<td><b>Phone Number:</b> " + transaction.getCustomerPhone()  + "<br>\n" +
+                "<b>Email Address:</b> " + transaction.getCustomerEmail() + "</td>" +
                 "<td></td>\n" +
                 "<td></td>\n" +
                 "<td><b>Tender Information:</b> <br>\n");
 
-        for(int i = 0; i < td.tenderTypeSize(); i++) {
-            html.append(td.getTenderType(i) + ": $" + String.format("%.2f", td.getTenderAmount(i)));
+        for(int i = 0; i < transaction.getTenders().size(); i++) {
+            html.append(transaction.getTenders().get(i).getTenderType() + ": $" + String.format("%.2f", transaction.getTenders().get(i).getTenderAmount()));
         }
 
 
         html.append("</td>\n" +
                 "<td align=\"right\"><b>Store:</b> " + this.store + "<br>\n" +
-                "<b>Transaction Number:</b> " + si.getTransNumber() + "<br>\n" +
-                "<b>Transaction Time:</b> " + td.getTransactionTime() + "<br>\n" +
+                "<b>Transaction Number:</b> " + transaction.getTransactionNumber() + "<br>\n" +
+                "<b>Transaction Time:</b> " + transaction.getTransactionTime() + "<br>\n" +
                 "<b>Transfer Number: </b> " + this.worksheetId + "<br>\n");
-        if(!td.getTransComment().isEmpty()) {
-            html.append("<b>Comment: </b> " + td.getTransComment());
+        if(!transaction.getComment().isEmpty()) {
+            html.append("<b>Comment: </b> " + transaction.getComment());
         }
         html.append(" </td> <tr>\n" +
                 "<th>ItemLookupCode</th>\n" +
@@ -108,24 +100,24 @@ public class Email {
         //Adds HTML to add each line item to email table
         for(int i = 0; i < lineItems.size(); i++) {
             String location;
-            if(td.getLookupCode(i).equals("BAG")) {
+            if(lineItems.get(i).getIlc().equals("BAG")) {
                 location = "";
             }
-            else if(itemLinesToDrop.contains(i)) {
+            else if(lineItems.get(i).getWhQty() < lineItems.get(i).getQty()) {
                 location = this.store;
             }
-            else if(itemLinesTook.contains(i)){
+            else if(lineItems.get(i).getComment().toLowerCase().matches("cc(.*)")){
                 location = "Customer Took";
             }
             else {
                 location = "Warehouse";
             }
             html.append("<tr>\n" +
-                    "<td>" + td.getLookupCode(i) + "</td>\n" +
-                    "<td>" + td.getDescription(i) + "</td>\n" +
-                    "<td>" + "$" + String.format("%.2f", td.getPrice(i)) + "</td>\n" +
-                    "<td>" + (int) td.getQty(i) + "</td>\n" +
-                    "<td>" + "$" + String.format("%.2f", td.getTransactionSalesTax(i)) + "</td>\n" +
+                    "<td>" + lineItems.get(i).getIlc() + "</td>\n" +
+                    "<td>" + lineItems.get(i).getDescription() + "</td>\n" +
+                    "<td>" + "$" + String.format("%.2f", lineItems.get(i).getPrice()) + "</td>\n" +
+                    "<td>" + (int) lineItems.get(i).getQty() + "</td>\n" +
+                    "<td>" + "$" + String.format("%.2f", lineItems.get(i).getSalesTax()) + "</td>\n" +
                     "<td>" + location + "</td>\n" +
                     "</tr>");
 
@@ -135,8 +127,8 @@ public class Email {
         double transTotal = 0.00;
         double transTaxTotal = 0.00;
         for(int i = 0; i < lineItems.size(); i++) {
-            transTotal += td.getTotal(i);
-            transTaxTotal += td.getTransactionSalesTax(i);
+            transTotal += lineItems.get(i).getPrice();
+            transTaxTotal += lineItems.get(i).getSalesTax();
         }
 
         transTotal = round(transTotal, 2);
@@ -148,7 +140,7 @@ public class Email {
                 "<td>" + "$" + String.format("%.2f", transTotal) + "</td>\n" +
                 "<td align=\"right\"><b>Tax Total:</b></td>\n" +
                 "<td>" + "$" + String.format("%.2f", transTaxTotal) + "</td>\n" +
-                "<td>Shipping Charge: $" + String.format("%.2f", si.getShippingCharge()) + "</td>\n" +
+                "<td>Shipping Charge: $" + String.format("%.2f", transaction.getShippingCharge()) + "</td>\n" +
                 "</tr>");
 
         //Email account server settings
