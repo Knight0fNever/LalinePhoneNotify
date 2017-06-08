@@ -12,8 +12,7 @@ public class Main {
         String emailFrom = "info@lalineusa.com";
         String emailBcc = "";
         String p = "jfjTre tihn5mmvuiiTptpo elakn3iisg Flenoi#pos";
-        //SQL sql = new SQL("jdbc:sqlserver://LALINEHQ\\SQLEXPRESS;databaseName=Laline HQ", "app", p.substring(11, 20));
-        SQL sql = new SQL("jdbc:sqlserver://JOSH-IT\\SQLEXPRESS;databaseName=Laline HQ", "sa", "Zcsf4119!");
+        SQL sql = new SQL("jdbc:sqlserver://LALINEHQ\\SQLEXPRESS;databaseName=Laline HQ", "app", p.substring(11, 20));
         Connection con = sql.getCon();
         Filer  fl = new Filer(con);
 
