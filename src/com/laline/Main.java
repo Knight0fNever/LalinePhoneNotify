@@ -21,10 +21,12 @@ public class Main {
 
         /*
         //Testing
-        //Transaction transTest = new Transaction(65428, 3, sql);
-        //CreateTransfer ct = new CreateTransfer(con, transTest);
-        //Email email = new Email(con, testEmailTo, emailFrom, emailBcc, transTest.getStoreId(), emailUsername, emailPassword, transTest, ct.getWorksheetId());
-        //email.eSend();
+        if(fl.PierNewTrans()) {
+            Transaction transTest = new Transaction(fl.getpNewTrans(), 2, sql);
+            CreateTransfer ct = new CreateTransfer(con, transTest);
+            Email email = new Email(con, testEmailTo, emailFrom, emailBcc, transTest.getStoreId(), emailUsername, emailPassword, transTest, ct.getWorksheetId());
+            email.eSend();
+        }
         */
 
 
