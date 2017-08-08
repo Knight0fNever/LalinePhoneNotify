@@ -54,7 +54,7 @@ public class Main {
         if(fl.ChestnutNewTrans()) {
             Transaction transChestnut = new Transaction(fl.getcNewTrans(), 4, sql);
             CreateTransfer ct = new CreateTransfer(con, transChestnut);
-            Email e = new Email(con, emailTo + ",chestnut@lalineusa.com,eugenial@lalineusa.com", emailFrom, emailBcc, transChestnut.getStoreId(), emailUsername, emailPassword, transChestnut, ct.getWorksheetId());
+            Email e = new Email(con, emailTo + ",chestnut@lalineusa.com,adilenep@lalineusa.com", emailFrom, emailBcc, transChestnut.getStoreId(), emailUsername, emailPassword, transChestnut, ct.getWorksheetId());
             e.eSend();
         }
     }

@@ -17,11 +17,7 @@ public class Transaction {
     private String cashier;
     private double salesTax;
     private double shipping;
-    private String customerName;
-    private String customerCompany;
-    private String customerAddress;
-    private String customerPhone;
-    private String customerEmail;
+    private Customer customer;
     private List<LineItem> lineItems = new ArrayList<>();
     private List<LineItem> lineItemsUpdated;
     private String transactionTime;
@@ -29,6 +25,7 @@ public class Transaction {
     private List<Tender> tenders = new ArrayList<>();
 
     Transaction(int transactionNumber, int storeId, SQL sql) throws SQLException {
+        this.customer = new Customer();
         this.transactionNumber = transactionNumber;
         this.storeId = storeId;
         this.con = sql.getCon();
@@ -59,11 +56,49 @@ public class Transaction {
     }
 
     private void setCustomerDetails() throws SQLException {
-        setCustomerName();
-        setCustomerCompany();
-        setCustomerAddress();
-        setCustomerEmail();
-        setCustomerPhone();
+        int shipToId = 0;
+        String query = "SELECT [Transaction].ShipToID FROM [Transaction]\n" +
+                "WHERE [Transaction].TransactionNumber = " + this.transactionNumber + "[Transaction].StoreID = " + this.storeId;
+        ResultSet rs = viewTable(con, query);
+        while(rs.next()) {
+            shipToId = rs.getInt("ShipToID");
+        }
+        if(shipToId == 0) {
+            //Billing
+            setCustomerName("SELECT Customer.FirstName + ' ' + Customer.LastName as 'Name' FROM [Transaction]\n" +
+                    "LEFT JOIN Customer ON [Transaction].CustomerID = Customer.ID\n" +
+                    "WHERE [Transaction].TransactionNumber = " + this.transactionNumber + " AND [Transaction].StoreID = " + this.storeId);
+            setCustomerCompany("SELECT Customer.Company FROM [Transaction]\n" +
+                    "LEFT JOIN Customer ON [Transaction].CustomerID = Customer.ID\n" +
+                    "WHERE [Transaction].TransactionNumber = " + this.transactionNumber + " AND [Transaction].StoreID = " + this.storeId);
+            setCustomerAddress("SELECT Customer.[Address], Customer.Address2, Customer.City, Customer.[State], Customer.Zip, Customer.Country FROM [Transaction]\n" +
+            "LEFT JOIN Customer ON [Transaction].CustomerID = Customer.ID\n" +
+                    "WHERE [Transaction].TransactionNumber = " + this.transactionNumber + " AND [Transaction].StoreID = " + this.storeId);
+            setCustomerPhone("SELECT Customer.PhoneNumber FROM [Transaction]\n" +
+                    "LEFT JOIN Customer ON [Transaction].CustomerID = Customer.ID\n" +
+                    "WHERE [Transaction].TransactionNumber = " + this.transactionNumber + " AND [Transaction].StoreID = " + this.storeId);
+            setCustomerEmail("SELECT Customer.EmailAddress FROM [Transaction]\n" +
+                    "LEFT JOIN Customer ON [Transaction].CustomerID = Customer.ID\n" +
+                    "WHERE [Transaction].TransactionNumber = " + this.transactionNumber + " AND [Transaction].StoreID = " + this.storeId);
+        }
+        else {
+            //Shipping
+            setCustomerName("SELECT ShipTo.Name FROM [Transaction]\n" +
+                    "LEFT JOIN ShipTo ON [Transaction].ShipToID = ShipTo.ID\n" +
+                    "WHERE [Transaction].TransactionNumber = " + this.transactionNumber + " AND [Transaction].StoreID = " + this.storeId);
+            setCustomerCompany("SELECT ShipTo.Company FROM [Transaction]\n" +
+                    "LEFT JOIN ShipTo ON [Transaction].ShipToID = ShipTo.ID\n" +
+                    "WHERE [Transaction].TransactionNumber = " + this.transactionNumber + " AND [Transaction].StoreID = " + this.storeId);
+            setCustomerAddress("SELECT ShipTo.[Address], ShipTo.Address2, ShipTo.City, ShipTo.[State], ShipTo.Zip, ShipTo.Country FROM [Transaction]\n" +
+                    "LEFT JOIN ShipTo ON [Transaction].ShipToID = ShipTo.ID\n" +
+                    "WHERE [Transaction].TransactionNumber = " + this.transactionNumber + " AND [Transaction].StoreID = " + this.storeId);
+            setCustomerPhone("SELECT ShipTo.PhoneNumber FROM [Transaction]\n" +
+                    "LEFT JOIN ShipTo ON [Transaction].ShipToID = ShipTo.ID\n" +
+                    "WHERE [Transaction].TransactionNumber = " + this.transactionNumber + " AND [Transaction].StoreID = " + this.storeId);
+            setCustomerEmail("SELECT ShipTo.EmailAddress FROM [Transaction]\n" +
+                    "LEFT JOIN ShipTo ON [Transaction].ShipToID = ShipTo.ID\n" +
+                    "WHERE [Transaction].TransactionNumber = " + this.transactionNumber + " AND [Transaction].StoreID = " + this.storeId);
+        }
     }
 
     private void setTransactionDetails() throws SQLException {
@@ -159,78 +194,59 @@ public class Transaction {
         }
     }
 
-    private void setCustomerName() throws SQLException {
-        String query = "SELECT Customer.FirstName + ' ' +  Customer.LastName as 'Name' FROM [Transaction]\n" +
-                "LEFT JOIN Customer ON [Transaction].CustomerID = Customer.ID\n" +
-                "WHERE [Transaction].TransactionNumber = " + this.transactionNumber + " AND [Transaction].StoreID = " + this.storeId;
+    private void setCustomerName(String query) throws SQLException {
         ResultSet rs = viewTable(con, query);
         while(rs.next()) {
-            this.customerName = rs.getString("Name");
+            this.customer.getAddress().setName(rs.getString("Name"));
         }
     }
 
-    private void setCustomerCompany() throws SQLException {
-        String query = "SELECT Customer.Company FROM [Transaction]\n" +
-                "LEFT JOIN Customer ON [Transaction].CustomerID = Customer.ID\n" +
-                "WHERE [Transaction].TransactionNumber = " + this.transactionNumber + " AND [Transaction].StoreID = " + this.storeId;
+    private void setCustomerCompany(String query) throws SQLException {
         ResultSet rs = viewTable(con, query);
         while(rs.next()) {
-            this.customerCompany = rs.getString("Company");
+            this.customer.getAddress().setCompany(rs.getString("Company"));
         }
-        if(this.customerCompany == null) {
-            this.customerCompany = "";
+        if(this.customer.getAddress().getCompany() == null) {
+            this.customer.getAddress().setCompany("");
         }
     }
 
-    private void setCustomerAddress() throws SQLException {
-        String query = "SELECT Customer.[Address], Customer.Address2, Customer.City, Customer.[State], Customer.Zip, Customer.Country FROM [Transaction]\n" +
-                "LEFT JOIN Customer ON [Transaction].CustomerID = Customer.ID\n" +
-                "WHERE [Transaction].TransactionNumber = " + this.transactionNumber + " AND [Transaction].StoreID = " + this.storeId;
+    private void setCustomerAddress(String query) throws SQLException {
         ResultSet rs = viewTable(con, query);
-        String address = "";
-        String address2 = "";
-        String city = "";
-        String state = "";
-        String zip = "";
-        String country = "";
+        String addressLocal = "";
+        String address2Local = "";
         while(rs.next()) {
-            address = rs.getString("Address");
-            address2 = rs.getString("Address2");
-            city = rs.getString("City");
-            state = rs.getString("State");
-            zip = rs.getString("Zip");
-            country = rs.getString("Country");
+            addressLocal = rs.getString("Address");
+            address2Local = rs.getString("Address2");
+            this.customer.getAddress().setCity(rs.getString("City"));
+            this.customer.getAddress().setState(rs.getString("State"));
+            this.customer.getAddress().setZip(rs.getString("Zip"));
+            this.customer.getAddress().setCountry(rs.getString("Country"));
         }
         StringBuilder sb = new StringBuilder();
-        if(!address.isEmpty()) {
-            sb.append(address);
+        if(!addressLocal.isEmpty()) {
+            sb.append(addressLocal);
             sb.append("\n");
         }
-        if(!address2.isEmpty()) {
-            sb.append(address2);
+        if(!address2Local.isEmpty()) {
+            sb.append(address2Local);
             sb.append("\n");
         }
-        sb.append(city + ", " + state + " " + zip + "\n" + country);
-        this.customerAddress = sb.toString();
+        sb.append(this.customer.getAddress().getCity() + ", " + this.customer.getAddress().getState() + " " + this.customer.getAddress().getZip() + "\n" + this.customer.getAddress().getCountry());
+        this.customer.getAddress().setAddress(sb.toString());
     }
 
-    private void setCustomerPhone() throws SQLException {
-        String query = "SELECT Customer.PhoneNumber FROM [Transaction]\n" +
-                "LEFT JOIN Customer ON [Transaction].CustomerID = Customer.ID\n" +
-                "WHERE [Transaction].TransactionNumber = " + this.transactionNumber + " AND [Transaction].StoreID = " + this.storeId;
+    private void setCustomerPhone(String query) throws SQLException {
         ResultSet rs = viewTable(con, query);
         while(rs.next()) {
-            this.customerPhone = rs.getString("PhoneNumber");
+            this.customer.getAddress().setPhoneNumber(rs.getString("PhoneNumber"));
         }
     }
 
-    private void setCustomerEmail() throws SQLException {
-        String query = "SELECT Customer.EmailAddress FROM [Transaction]\n" +
-                "LEFT JOIN Customer ON [Transaction].CustomerID = Customer.ID\n" +
-                "WHERE [Transaction].TransactionNumber = " + this.transactionNumber + " AND [Transaction].StoreID = " + this.storeId;
+    private void setCustomerEmail(String query) throws SQLException {
         ResultSet rs = viewTable(con, query);
         while (rs.next()) {
-            this.customerEmail = rs.getString("EmailAddress");
+            this.customer.getAddress().setEmail(rs.getString("EmailAddress"));
         }
     }
 
@@ -277,23 +293,23 @@ public class Transaction {
     }
 
     public String getCustomerName() {
-        return customerName;
+        return this.customer.getAddress().getName();
     }
 
     public String getCustomerCompany() {
-        return customerCompany;
+        return this.customer.getAddress().getCompany();
     }
 
     public String getCustomerAddress() {
-        return customerAddress;
+        return this.customer.getAddress().getAddress();
     }
 
     public String getCustomerPhone() {
-        return customerPhone;
+        return this.customer.getAddress().getPhoneNumber();
     }
 
     public String getCustomerEmail() {
-        return customerEmail;
+        return this.customer.getAddress().getEmail();
     }
 
     public String getTransactionTime() {
